@@ -48,6 +48,42 @@ function App() {
     }
   }
 
+  async function handleDeleteDocument(filename: string) {
+  const confirmed = window.confirm(`确定要删除文档：${filename} 吗？`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const res = await axios.delete(
+      `${API_BASE_URL}/documents/${encodeURIComponent(filename)}`
+    );
+
+    if (res.data.error) {
+      alert(res.data.error);
+      return;
+    }
+
+    if (selectedFile === filename) {
+      setSelectedFile("");
+      setAnswer("");
+      setChunks([]);
+      setSummary("");
+      setChatHistory([]);
+    }
+
+    await fetchDocuments();
+  } catch (error) {
+    console.error(error);
+    alert("删除失败，请查看后端终端报错");
+  } finally {
+    setLoading(false);
+  }
+}
+
   async function handleUpload() {
     if (!uploadFile) {
       alert("请先选择一个 PDF 文件");
@@ -205,7 +241,7 @@ function App() {
           ) : (
             <div className="document-list">
               {documents.map((doc) => (
-                <button
+                <div
                   key={doc.filename}
                   className={
                     selectedFile === doc.filename
@@ -215,10 +251,24 @@ function App() {
                   onClick={() => setSelectedFile(doc.filename)}
                 >
                   <strong>{doc.filename}</strong>
-                  <span>{doc.pages} 页</span>
-                  <span>{doc.chunks_count} chunks</span>
-                  <span>{doc.has_embeddings ? "已向量化" : "未向量化"}</span>
-                </button>
+
+                  <div className="document-meta">
+                    <span>{doc.pages} 页</span>
+                    <span>{doc.chunks_count} chunks</span>
+                    <span>{doc.has_embeddings ? "已向量化" : "未向量化"}</span>
+                  </div>
+
+                  <button
+                    className="delete-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteDocument(doc.filename);
+                    }}
+                    disabled={loading}
+                  >
+                    删除
+                  </button>
+                </div>
               ))}
             </div>
           )}

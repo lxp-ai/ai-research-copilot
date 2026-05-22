@@ -475,3 +475,26 @@ def ask_all_documents(request: ChatRequest):
         "answer": response.choices[0].message.content
     }
 
+@app.delete("/documents/{filename}")
+def delete_document(filename: str):
+    documents = load_documents()
+
+    if filename not in documents:
+        return {
+            "error": "没有找到这个文档"
+        }
+
+    # 1. 从 documents.json 中删除记录
+    del documents[filename]
+    save_documents(documents)
+
+    # 2. 删除 uploads 里的 PDF 文件
+    file_path = os.path.join(UPLOAD_DIR, filename)
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    return {
+        "message": "文档删除成功",
+        "filename": filename
+    }

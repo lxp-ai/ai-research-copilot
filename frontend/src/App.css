@@ -345,3 +345,22 @@ textarea {
   background: #2563eb;
   color: white;
 }
+
+.document-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.delete-button {
+  background: #7f1d1d;
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.delete-button:hover {
+  background: #991b1b;
+}
