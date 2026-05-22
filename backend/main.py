@@ -371,3 +371,107 @@ def summarize_document(request: DocumentSummaryRequest):
         "filename": request.filename,
         "summary": response.choices[0].message.content
     }
+
+@app.post("/ask-all-documents")
+def ask_all_documents(request: ChatRequest):
+    documents = load_documents()
+
+    if not documents:
+        return {
+            "error": "当前没有任何文档，请先上传 PDF"
+        }
+
+    all_scored_chunks = []
+
+    question_embedding = embedding_model.encode(
+        request.message,
+        normalize_embeddings=True
+    )
+
+    for filename, document in documents.items():
+        chunks = document.get("chunks", [])
+
+        if not chunks:
+            continue
+
+        if chunks and "embedding" not in chunks[0]:
+            chunks = create_embeddings_for_chunks(chunks)
+            document["chunks"] = chunks
+            documents[filename] = document
+
+        for chunk in chunks:
+            if "embedding" not in chunk:
+                continue
+
+            chunk_embedding = np.array(chunk["embedding"])
+            score = float(np.dot(question_embedding, chunk_embedding))
+
+            all_scored_chunks.append({
+                "filename": filename,
+                "chunk_id": chunk["chunk_id"],
+                "text": chunk["text"],
+                "score": score
+            })
+
+    save_documents(documents)
+
+    all_scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+
+    retrieved_chunks = all_scored_chunks[:5]
+
+    if not retrieved_chunks:
+        return {
+            "error": "没有检索到相关文档片段"
+        }
+
+    context = ""
+
+    for item in retrieved_chunks:
+        context += f"\n\n[File: {item['filename']} | Chunk {item['chunk_id']} | Similarity {item['score']:.4f}]\n"
+        context += item["text"]
+
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {
+                "role": "system",
+                "content": """
+你是一个专业的 AI Research Copilot。
+
+你现在需要基于多个文档中检索到的相关片段回答问题。
+你必须只基于给定片段回答。
+如果片段中没有相关信息，请明确说明“当前检索到的文档片段中没有找到相关信息”。
+不要编造。
+回答要清晰、结构化。
+回答最后必须列出参考的文件名和 Chunk。
+"""
+            },
+            {
+                "role": "user",
+                "content": f"""
+以下是从多个文档中检索到的相关片段：
+
+{context}
+
+用户问题：
+{request.message}
+"""
+            }
+        ]
+    )
+
+    return {
+        "question": request.message,
+        "retrieval_method": "multi_document_semantic_search",
+        "retrieved_chunks": [
+            {
+                "filename": item["filename"],
+                "chunk_id": item["chunk_id"],
+                "similarity": round(item["score"], 4),
+                "preview": item["text"][:200]
+            }
+            for item in retrieved_chunks
+        ],
+        "answer": response.choices[0].message.content
+    }
+

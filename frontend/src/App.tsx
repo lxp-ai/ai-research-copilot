@@ -14,9 +14,16 @@ type DocumentItem = {
 };
 
 type RetrievedChunk = {
+  filename?: string;
   chunk_id: number;
   similarity: number;
   preview: string;
+};
+
+type ChatHistoryItem = {
+  question: string;
+  answer: string;
+  chunks: RetrievedChunk[];
 };
 
 function App() {
@@ -27,8 +34,10 @@ function App() {
   const [answer, setAnswer] = useState("");
   const [chunks, setChunks] = useState<RetrievedChunk[]>([]);
   const [summary, setSummary] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
+  const [askMode, setAskMode] = useState<"single" | "all">("single");
 
   async function fetchDocuments() {
     try {
@@ -78,10 +87,6 @@ function App() {
   }
 
   async function handleAsk() {
-    if (!selectedFile) {
-      alert("请先选择一个文档");
-      return;
-    }
 
     if (!question.trim()) {
       alert("请输入问题");
@@ -93,18 +98,40 @@ function App() {
     setChunks([]);
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/ask-document`, {
-        filename: selectedFile,
-        question,
-      });
+      let res;
+
+      if (askMode === "single") {
+        if (!selectedFile) {
+          alert("请先选择一个文档");
+          return;
+        }
+
+        res = await axios.post(`${API_BASE_URL}/ask-document`, {
+          filename: selectedFile,
+          question,
+        });
+      } else {
+        res = await axios.post(`${API_BASE_URL}/ask-all-documents`, {
+          message: question,
+        });
+      }
 
       if (res.data.error) {
         setAnswer(res.data.error);
         return;
       }
 
+      const newItem: ChatHistoryItem = {
+        question,
+        answer: res.data.answer,
+        chunks: res.data.retrieved_chunks || [],
+      };
+
+      setChatHistory((prev) => [newItem, ...prev]);
+
       setAnswer(res.data.answer);
       setChunks(res.data.retrieved_chunks || []);
+      setQuestion("");
     } catch (error) {
       console.error(error);
       setAnswer("提问失败，请查看后端终端报错");
@@ -204,6 +231,22 @@ function App() {
             当前文档：
             <strong>{selectedFile || "未选择"}</strong>
           </div>
+          
+          <div className="mode-switch">
+            <button
+              className={askMode === "single" ? "mode-button active" : "mode-button"}
+              onClick={() => setAskMode("single")}
+            >
+              单文档问答
+            </button>
+
+            <button
+              className={askMode === "all" ? "mode-button active" : "mode-button"}
+              onClick={() => setAskMode("all")}
+            >
+              全部文档问答
+            </button>
+          </div>
 
           <div className="status-grid">
             <div className="status-card">
@@ -230,6 +273,17 @@ function App() {
             {loading ? "AI 思考中..." : "提问"}
           </button>
 
+          <button
+          className="secondary-button"
+          onClick={() => {
+            setChatHistory([]);
+            setAnswer("");
+            setChunks([]);
+          }}
+        >
+          清空聊天
+        </button>
+
           <button onClick={handleSummary} disabled={loading}>
           {loading ? "生成中..." : "生成文档摘要"}
           </button>
@@ -241,12 +295,45 @@ function App() {
           </div>
           )}
 
+          {chatHistory.length > 0 && (
+            <div className="history">
+              <h3>聊天历史</h3>
+
+              {chatHistory.map((item, index) => (
+                <div className="history-item" key={index}>
+                  <div className="history-question">
+                    <strong>Q:</strong> {item.question}
+                  </div>
+
+                  <div className="history-answer markdown-body">
+                    <strong>A:</strong>
+                    <ReactMarkdown>{item.answer}</ReactMarkdown>
+                  </div>
+
+                  {item.chunks.length > 0 && (
+                    <div className="history-chunks">
+                      <strong>引用 Chunks:</strong>
+                      {item.chunks.map((chunk) => (
+                        <div className="mini-chunk" key={chunk.chunk_id}>
+                          {chunk.filename && `${chunk.filename} · `}
+                          Chunk {chunk.chunk_id} · Similarity {chunk.similarity}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {summary && (
           <div className="answer markdown-body">
           <h3>文档摘要</h3>
           <ReactMarkdown>{summary}</ReactMarkdown>
           </div>
           )}
+
+          
 
           {chunks.length > 0 && (
             <div className="chunks">
@@ -255,6 +342,7 @@ function App() {
               {chunks.map((chunk) => (
                 <div className="chunk" key={chunk.chunk_id}>
                   <div className="chunk-title">
+                    {chunk.filename && `${chunk.filename} · `}
                     Chunk {chunk.chunk_id} · Similarity {chunk.similarity}
                   </div>
                   <p>{chunk.preview}</p>
