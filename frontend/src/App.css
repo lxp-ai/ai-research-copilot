@@ -364,3 +364,9 @@ textarea {
 .delete-button:hover {
   background: #991b1b;
 }
+
+.history-meta {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-bottom: 8px;
+}

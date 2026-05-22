@@ -21,6 +21,8 @@ type RetrievedChunk = {
 };
 
 type ChatHistoryItem = {
+  mode?: string;
+  filename?: string;
   question: string;
   answer: string;
   chunks: RetrievedChunk[];
@@ -47,6 +49,15 @@ function App() {
     } catch (error) {
       console.error(error);
     }
+  }
+
+  async function fetchChatHistory() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/chat-history`);
+    setChatHistory(res.data.history || []);
+  } catch (error) {
+    console.error(error);
+  }
   }
 
   async function handleDeleteDocument(filename: string) {
@@ -159,12 +170,16 @@ function App() {
       }
 
       const newItem: ChatHistoryItem = {
+        mode: askMode,
+        filename: askMode === "single" ? selectedFile : "ALL_DOCUMENTS",
         question,
         answer: res.data.answer,
         chunks: res.data.retrieved_chunks || [],
       };
 
       setChatHistory((prev) => [newItem, ...prev]);
+
+      await axios.post(`${API_BASE_URL}/chat-history`, newItem);
 
       setAnswer(res.data.answer);
       setChunks(res.data.retrieved_chunks || []);
@@ -228,6 +243,7 @@ function App() {
 
   useEffect(() => {
     fetchDocuments();
+    fetchChatHistory();
   }, []);
 
   return (
@@ -347,14 +363,15 @@ function App() {
 
           <button
           className="secondary-button"
-          onClick={() => {
+          onClick={async () => {
+            await axios.delete(`${API_BASE_URL}/chat-history`);
             setChatHistory([]);
             setAnswer("");
             setChunks([]);
           }}
-        >
-          清空聊天
-        </button>
+          >
+            清空聊天
+          </button>
 
           <button onClick={handleSummary} disabled={loading}>
           {loading ? "生成中..." : "生成文档摘要"}
@@ -378,6 +395,10 @@ function App() {
               {chatHistory.map((item, index) => (
                 <div className="history-item" key={index}>
                   <div className="history-question">
+                    <div className="history-meta">
+                      {item.mode === "all" ? "全部文档问答" : "单文档问答"}
+                      {item.filename && ` · ${item.filename}`}
+                    </div>
                     <strong>Q:</strong> {item.question}
                   </div>
 

@@ -41,7 +41,7 @@ embedding_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
 UPLOAD_DIR = "uploads"
 DOCUMENTS_FILE = "documents.json"
-
+CHAT_HISTORY_FILE = "chat_history.json"
 
 class ChatRequest(BaseModel):
     message: str
@@ -54,6 +54,12 @@ class DocumentQuestionRequest(BaseModel):
 class DocumentSummaryRequest(BaseModel):
     filename: str
 
+class ChatHistoryItemRequest(BaseModel):
+    mode: str
+    filename: str | None = None
+    question: str
+    answer: str
+    chunks: list = []
 
 def load_documents():
     if not os.path.exists(DOCUMENTS_FILE):
@@ -66,6 +72,18 @@ def load_documents():
 def save_documents(documents):
     with open(DOCUMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(documents, f, ensure_ascii=False, indent=2)
+
+def load_chat_history():
+    if not os.path.exists(CHAT_HISTORY_FILE):
+        return []
+
+    with open(CHAT_HISTORY_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_chat_history(history):
+    with open(CHAT_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
 
 
 def split_text_into_chunks(text: str, chunk_size: int = 800, overlap: int = 150):
@@ -561,4 +579,48 @@ def summarize_all_documents():
     return {
         "document_count": len(documents),
         "summary": response.choices[0].message.content
+    }
+
+
+@app.get("/chat-history")
+def get_chat_history():
+    history = load_chat_history()
+
+    return {
+        "history": history
+    }
+
+
+@app.post("/chat-history")
+def add_chat_history(item: ChatHistoryItemRequest):
+    history = load_chat_history()
+
+    history_item = {
+        "mode": item.mode,
+        "filename": item.filename,
+        "question": item.question,
+        "answer": item.answer,
+        "chunks": item.chunks
+    }
+
+    # 最新记录放前面
+    history.insert(0, history_item)
+
+    # 最多保存 50 条，避免文件越来越大
+    history = history[:50]
+
+    save_chat_history(history)
+
+    return {
+        "message": "聊天历史保存成功",
+        "history_count": len(history)
+    }
+
+
+@app.delete("/chat-history")
+def clear_chat_history():
+    save_chat_history([])
+
+    return {
+        "message": "聊天历史已清空"
     }
