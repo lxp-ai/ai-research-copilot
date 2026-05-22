@@ -498,3 +498,67 @@ def delete_document(filename: str):
         "message": "文档删除成功",
         "filename": filename
     }
+
+
+@app.post("/summarize-all-documents")
+def summarize_all_documents():
+    documents = load_documents()
+
+    if not documents:
+        return {
+            "error": "当前没有任何文档，请先上传 PDF"
+        }
+
+    combined_context = ""
+
+    for filename, document in documents.items():
+        text = document.get("text", "")
+
+        # 每个文档最多取前 6000 字，避免 prompt 过长
+        preview_text = text[:6000]
+
+        combined_context += f"""
+
+==============================
+文档名称：{filename}
+==============================
+
+{preview_text}
+"""
+
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {
+                "role": "system",
+                "content": """
+你是一个专业的 AI Research Copilot。
+你需要基于多个文档内容，生成跨文档综述和对比分析。
+你必须只基于用户提供的文档内容回答，不要编造。
+回答使用中文，结构清晰，适合用于研究汇报或面试项目展示。
+"""
+            },
+            {
+                "role": "user",
+                "content": f"""
+以下是多个文档的内容节选：
+
+{combined_context}
+
+请基于这些文档，按下面结构输出：
+
+1. 所有文档共同关注的主题
+2. 每个文档的主要内容
+3. 文档之间的相同点
+4. 文档之间的差异点
+5. 综合结论
+6. 适合汇报的一句话总结
+"""
+            }
+        ]
+    )
+
+    return {
+        "document_count": len(documents),
+        "summary": response.choices[0].message.content
+    }

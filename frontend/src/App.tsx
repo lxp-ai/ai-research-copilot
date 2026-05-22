@@ -35,6 +35,7 @@ function App() {
   const [chunks, setChunks] = useState<RetrievedChunk[]>([]);
   const [summary, setSummary] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+  const [allSummary, setAllSummary] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const [askMode, setAskMode] = useState<"single" | "all">("single");
@@ -204,6 +205,27 @@ function App() {
   }
 }
 
+  async function handleAllSummary() {
+  setLoading(true);
+  setAllSummary("");
+
+  try {
+    const res = await axios.post(`${API_BASE_URL}/summarize-all-documents`);
+
+    if (res.data.error) {
+      setAllSummary(res.data.error);
+      return;
+    }
+
+    setAllSummary(res.data.summary);
+  } catch (error) {
+    console.error(error);
+    setAllSummary("生成全部文档综述失败，请查看后端终端报错");
+  } finally {
+    setLoading(false);
+  }
+}
+
   useEffect(() => {
     fetchDocuments();
   }, []);
@@ -338,6 +360,10 @@ function App() {
           {loading ? "生成中..." : "生成文档摘要"}
           </button>
 
+          <button onClick={handleAllSummary} disabled={loading}>
+            {loading ? "生成中..." : "生成全部文档综述"}
+          </button>
+
           {answer && (
           <div className="answer markdown-body">
           <h3>AI 回答</h3>
@@ -381,6 +407,13 @@ function App() {
           <h3>文档摘要</h3>
           <ReactMarkdown>{summary}</ReactMarkdown>
           </div>
+          )}
+
+          {allSummary && (
+            <div className="answer markdown-body">
+              <h3>全部文档综述 / 跨文档对比</h3>
+              <ReactMarkdown>{allSummary}</ReactMarkdown>
+            </div>
           )}
 
           
