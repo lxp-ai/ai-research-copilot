@@ -1,1 +1,78 @@
-[]
+[
+  {
+    "mode": "all",
+    "filename": "ALL_DOCUMENTS",
+    "question": "共同点是什么\n",
+    "answer": "根据检索到的文档片段，不同方案之间的共同点主要体现在以下几个方面：\n\n1. **基于时间或属性的密钥管理**：在时间型代理重加密方案中，密钥的生成和公共密钥依赖于时间维度（年、月、日）和属性，体现了细粒度的访问控制思想。\n\n2. **安全性和可证明安全**：多个方案都通过形式化安全模型（如PRF优势、IND-CKA2安全性）证明其方案在适应性攻击下是安全的，且忽略了可忽略的优势。\n\n3. **性能评估与实验比较**：DCDPI方案在实验中与多个现有方案（如PrivDPI、Pine、EV-DPI等）进行了对比，使用了标准密码学库（如Charm-Crypto）和硬件平台。\n\n4. **规则匹配与深度包检测**：BlindBox方案中，规则包含关键字匹配、偏移信息和正则表达式，用于检测攻击流量，且强调选择性关键字的使用以提高效率。\n\n5. **隐私与安全性平衡**：多个方案都关注在保护数据隐私的同时实现有效检测或搜索，例如在BlindBox中采用“可能原因”模型，只在有怀疑时才解密数据。\n\n**参考文件**：\n- Time-based proxy re-encryption scheme for secure data sharing in a cloud environment(科研通-ablesci.com).pdf | Chunk 67\n- Practical_Multi-Source_Multi-Client_Searchable_Encryption_With_Forward_Privacy_Refined_Security_Notion_and_New_Constructions.pdf | Chunk 75\n- DCDPI_Dynamic_and_Continuous_Deep_Packet_Inspection_in_Secure_Outsourced_Middleboxes.pdf | Chunk 75\n- BlindBox.pdf | Chunk 17, 30",
+    "chunks": [
+      {
+        "filename": "Time-based proxy re-encryption scheme for secure data sharing in a cloud environment(科研通-ablesci.com).pdf",
+        "chunk_id": 67,
+        "similarity": 0.325,
+        "preview": ";a\na is the time-based public key of\nattribute a in time Tu. Speciﬁcally, we have the following three cases: (1) Tu\nis a particular day ( y; m; d) and SK (y;m;d)\nu;a = SK1 + mk1mkuP K(y;m;d)\na ; (2)\nT"
+      },
+      {
+        "filename": "Practical_Multi-Source_Multi-Client_Searchable_Encryption_With_Forward_Privacy_Refined_Security_Notion_and_New_Constructions.pdf",
+        "chunk_id": 75,
+        "similarity": 0.32,
+        "preview": "dealΠ\nA,S(λ): IdealΠ\nA,S(λ) is the same as G7 except that\ninstead of taking the leakage function as the inputs. Hence, we\nhave the following equality:\nPr[IdealΠ\nA,S(λ)=1 ]= Pr[G7 =1 ].\nSumming up, we "
+      },
+      {
+        "filename": "DCDPI_Dynamic_and_Continuous_Deep_Packet_Inspection_in_Secure_Outsourced_Middleboxes.pdf",
+        "chunk_id": 75,
+        "similarity": 0.3107,
+        "preview": ", we may\nconclude that the advantage of a PPT adversary A may learn\nknowledge of the sensitive information is negligible. Thus, we\nhave\nAdvRH-RMF\nA (λ) ≤ AdvPRF\nB1,FK +AdvIND-CKA2\nB2,VBTree+.\nVI. P ER"
+      },
+      {
+        "filename": "BlindBox.pdf",
+        "chunk_id": 17,
+        "similarity": 0.3064,
+        "preview": "s. Each rule at-\ntempts to describe an attack and it contains ﬁelds such as:\none or more keywords to be matched in the trafﬁc, offset in-\nformation for each keyword, and sometimes regular expres-\nsion"
+      },
+      {
+        "filename": "BlindBox.pdf",
+        "chunk_id": 30,
+        "similarity": 0.285,
+        "preview": "S tasks which\nrequire regular expressions or scripting to complete their anal-\nysis. This model is inspired from two ideas. First, it is in-\nspired from the notion of probable cause from United States"
+      }
+    ]
+  },
+  {
+    "mode": "single",
+    "filename": "Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf",
+    "question": "讲了什么",
+    "answer": "根据检索到的文档片段，内容涉及以下几个主题：\n\n1. **符号与定义**（Chunk 24）：\n   - 介绍了文中使用的基本符号，如 `x ∥ y` 表示拼接，`x ⊕ y` 表示按位异或，大写字母表示随机变量，小写字母表示具体值。\n   - 定义了安全参数 λ，并给出了两个重要概念：\n     - **伪随机生成器（PRG）**：一种高效函数，其输出与均匀随机分布不可区分。\n     - **密钥函数**：一种高效的带密钥的函数。\n\n2. **系统模型与威胁模型**（Chunk 39）：\n   - 描述了流量方向（从 C 到 S）的假设，以及双向通信时只需交换角色即可。\n   - 定义了威胁模型，假设端点 C 或 S 可能作恶，但至少有一个是诚实的。\n\n3. **规则安全性定义**（Chunk 30）：\n   - 定义了规则安全性（Rule Security），通过实验 `EXP_MB_Adv` 来刻画：即使恶意中间盒（MB）能够选择两组规则，也无法以显著高于 1/2 的概率区分它们。\n\n4. **安全证明相关**（Chunk 75）：\n   - 使用伪随机函数和随机谕言机假设，证明了对任意概率多项式时间算法，两组不同规则产生的输出在统计上不可区分。\n\n5. **作者简介**（Chunk 121）：\n   - 介绍了作者 Dr. Choo 的学术荣誉和背景，包括 ACM 杰出演讲者、IEEE 杰出访问者、高被引研究者等。\n\n**参考文件与 Chunk**：\n- Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf | Chunk 24\n- Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf | Chunk 39\n- Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf | Chunk 30\n- Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf | Chunk 75\n- Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf | Chunk 121",
+    "chunks": [
+      {
+        "filename": "Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf",
+        "chunk_id": 24,
+        "similarity": 0.1889,
+        "preview": "the\nsplicing of x and y, and x ⊕ y represents the bitwise XOR of\nx and y. Uppercase letters X, Y, K,..., are used to denote\nrandom variables (RVs), and lowercase letters x, y, k,..., are\nused to denot"
+      },
+      {
+        "filename": "Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf",
+        "chunk_id": 39,
+        "similarity": 0.1571,
+        "preview": "in the trafﬁc, he/she interrupts the trafﬁc; if not, he/she makes\na digital forensics on the trafﬁc and forwards the trafﬁc to S.\nWhen the dispute occurs between S and C, MB can send the\ndigital foren"
+      },
+      {
+        "filename": "Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf",
+        "chunk_id": 30,
+        "similarity": 0.1428,
+        "preview": "of Setup (1λ); Obr\nis the output of ObRuleGen (KRG, R); {W1,..., Wι} are the\noutputs of Token (M); {Salt, T1,..., Tι} are the outputs of\nRaTokenGen(k, W1,..., Wι); and {V1,..., Vι} are the outputs\nof "
+      },
+      {
+        "filename": "Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf",
+        "chunk_id": 121,
+        "similarity": 0.1324,
+        "preview": "ustralia, BAE Systems stratsec, Australasian Institute of Judicial\nAdministration Incorporated, and Australian Research Council).\nDr. Choo is an ACM Distinguished Speaker and an IEEE Computer\nSociety "
+      },
+      {
+        "filename": "Privacy-Preserving_Encrypted_Traffic_Inspection_With_Symmetric_Cryptographic_Techniques_in_IoT.pdf",
+        "chunk_id": 75,
+        "similarity": 0.1269,
+        "preview": "\n(\n/Psi1η0\ni+1(τ)\n)\n= 1\n)\n. (18)\nThus⏐⏐\n⏐Pr\n(\nBfK\n0 (·) = 1\n)\n− Pr\n(\nBfU\n0 (·) = 1\n) ⏐⏐\n⏐\n=\n⏐⏐⏐Pr\n(\nA0\n(\n/Psi1η0\ni0 (τ)\n)\n= 1\n)\n− Pr\n(\nA0\n(\n/Psi1η0\ni0+1(τ)\n)\n= 1\n) ⏐⏐⏐\n> negl(λ).\nThis is a contradicti"
+      }
+    ]
+  }
+]

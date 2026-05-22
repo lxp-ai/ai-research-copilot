@@ -135,62 +135,98 @@ function App() {
   }
 
   async function handleAsk() {
+  if (!question.trim()) {
+    alert("请输入问题");
+    return;
+  }
 
-    if (!question.trim()) {
-      alert("请输入问题");
+  if (askMode === "single" && !selectedFile) {
+    alert("请先选择一个文档");
+    return;
+  }
+
+  setLoading(true);
+  setAnswer("");
+  setChunks([]);
+
+  const currentQuestion = question;
+  let finalAnswer = "";
+  let retrievedChunks: RetrievedChunk[] = [];
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/ask-stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: askMode,
+        filename: askMode === "single" ? selectedFile : null,
+        question: currentQuestion,
+      }),
+    });
+
+    if (!response.body) {
+      setAnswer("流式响应失败：没有 response body");
       return;
     }
 
-    setLoading(true);
-    setAnswer("");
-    setChunks([]);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
 
-    try {
-      let res;
+    let buffer = "";
 
-      if (askMode === "single") {
-        if (!selectedFile) {
-          alert("请先选择一个文档");
-          return;
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        const data = JSON.parse(line);
+
+        if (data.type === "chunks") {
+          retrievedChunks = data.chunks || [];
+          setChunks(retrievedChunks);
         }
 
-        res = await axios.post(`${API_BASE_URL}/ask-document`, {
-          filename: selectedFile,
-          question,
-        });
-      } else {
-        res = await axios.post(`${API_BASE_URL}/ask-all-documents`, {
-          message: question,
-        });
+        if (data.type === "delta") {
+          finalAnswer += data.content;
+          setAnswer(finalAnswer);
+        }
+
+        if (data.type === "done") {
+          const newItem: ChatHistoryItem = {
+            mode: askMode,
+            filename: askMode === "single" ? selectedFile : "ALL_DOCUMENTS",
+            question: currentQuestion,
+            answer: finalAnswer,
+            chunks: retrievedChunks,
+          };
+
+          setChatHistory((prev) => [newItem, ...prev]);
+
+          await axios.post(`${API_BASE_URL}/chat-history`, newItem);
+
+          setQuestion("");
+        }
       }
-
-      if (res.data.error) {
-        setAnswer(res.data.error);
-        return;
-      }
-
-      const newItem: ChatHistoryItem = {
-        mode: askMode,
-        filename: askMode === "single" ? selectedFile : "ALL_DOCUMENTS",
-        question,
-        answer: res.data.answer,
-        chunks: res.data.retrieved_chunks || [],
-      };
-
-      setChatHistory((prev) => [newItem, ...prev]);
-
-      await axios.post(`${API_BASE_URL}/chat-history`, newItem);
-
-      setAnswer(res.data.answer);
-      setChunks(res.data.retrieved_chunks || []);
-      setQuestion("");
-    } catch (error) {
-      console.error(error);
-      setAnswer("提问失败，请查看后端终端报错");
-    } finally {
-      setLoading(false);
     }
+  } catch (error) {
+    console.error(error);
+    setAnswer("流式提问失败，请查看后端终端报错");
+  } finally {
+    setLoading(false);
   }
+}
 
   async function handleSummary() {
   if (!selectedFile) {
@@ -358,7 +394,7 @@ function App() {
           />
 
           <button onClick={handleAsk} disabled={loading}>
-            {loading ? "AI 思考中..." : "提问"}
+            {loading ? "AI 流式生成中..." : "流式提问"}
           </button>
 
           <button

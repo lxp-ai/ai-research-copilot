@@ -5,6 +5,7 @@ import numpy as np
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -60,6 +61,11 @@ class ChatHistoryItemRequest(BaseModel):
     question: str
     answer: str
     chunks: list = []
+
+class StreamQuestionRequest(BaseModel):
+    mode: str = "single"
+    filename: str | None = None
+    question: str
 
 def load_documents():
     if not os.path.exists(DOCUMENTS_FILE):
@@ -624,3 +630,162 @@ def clear_chat_history():
     return {
         "message": "聊天历史已清空"
     }
+
+@app.post("/ask-stream")
+def ask_stream(request: StreamQuestionRequest):
+    documents = load_documents()
+
+    if request.mode == "single":
+        if not request.filename or request.filename not in documents:
+            return {
+                "error": "没有找到这个文档，请先上传 PDF"
+            }
+
+        document = documents[request.filename]
+        chunks = document.get("chunks", [])
+
+        if not chunks:
+            chunks = split_text_into_chunks(document["text"])
+
+        if chunks and "embedding" not in chunks[0]:
+            chunks = create_embeddings_for_chunks(chunks)
+            document["chunks"] = chunks
+            documents[request.filename] = document
+            save_documents(documents)
+
+        retrieved_chunks = semantic_retrieve(
+            question=request.question,
+            chunks=chunks,
+            top_k=5
+        )
+
+        formatted_chunks = [
+            {
+                "filename": request.filename,
+                "chunk_id": item["chunk_id"],
+                "similarity": round(item["score"], 4),
+                "preview": item["text"][:200],
+                "text": item["text"]
+            }
+            for item in retrieved_chunks
+        ]
+
+    else:
+        if not documents:
+            return {
+                "error": "当前没有任何文档，请先上传 PDF"
+            }
+
+        all_scored_chunks = []
+
+        question_embedding = embedding_model.encode(
+            request.question,
+            normalize_embeddings=True
+        )
+
+        for filename, document in documents.items():
+            chunks = document.get("chunks", [])
+
+            if not chunks:
+                continue
+
+            if chunks and "embedding" not in chunks[0]:
+                chunks = create_embeddings_for_chunks(chunks)
+                document["chunks"] = chunks
+                documents[filename] = document
+
+            for chunk in chunks:
+                if "embedding" not in chunk:
+                    continue
+
+                chunk_embedding = np.array(chunk["embedding"])
+                score = float(np.dot(question_embedding, chunk_embedding))
+
+                all_scored_chunks.append({
+                    "filename": filename,
+                    "chunk_id": chunk["chunk_id"],
+                    "text": chunk["text"],
+                    "score": score
+                })
+
+        save_documents(documents)
+
+        all_scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+        retrieved_chunks = all_scored_chunks[:5]
+
+        formatted_chunks = [
+            {
+                "filename": item["filename"],
+                "chunk_id": item["chunk_id"],
+                "similarity": round(item["score"], 4),
+                "preview": item["text"][:200],
+                "text": item["text"]
+            }
+            for item in retrieved_chunks
+        ]
+
+    context = ""
+
+    for item in formatted_chunks:
+        context += f"\n\n[File: {item['filename']} | Chunk {item['chunk_id']} | Similarity {item['similarity']}]\n"
+        context += item["text"]
+
+    def generate():
+        yield json.dumps({
+            "type": "chunks",
+            "chunks": [
+                {
+                    "filename": item["filename"],
+                    "chunk_id": item["chunk_id"],
+                    "similarity": item["similarity"],
+                    "preview": item["preview"]
+                }
+                for item in formatted_chunks
+            ]
+        }, ensure_ascii=False) + "\n"
+
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            stream=True,
+            messages=[
+                {
+                    "role": "system",
+                    "content": """
+你是一个专业的 AI Research Copilot。
+你必须只基于检索到的文档片段回答问题。
+如果片段中没有相关信息，请明确说明“当前检索到的文档片段中没有找到相关信息”。
+不要编造。
+回答要清晰、结构化。
+回答最后必须列出参考的文件名和 Chunk。
+"""
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+以下是检索到的相关文档片段：
+
+{context}
+
+用户问题：
+{request.question}
+"""
+                }
+            ]
+        )
+
+        for chunk in response:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield json.dumps({
+                    "type": "delta",
+                    "content": delta
+                }, ensure_ascii=False) + "\n"
+
+        yield json.dumps({
+            "type": "done"
+        }, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson"
+    )
